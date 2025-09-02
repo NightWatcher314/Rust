@@ -18,7 +18,7 @@ impl<V: Ord + Copy, E: Ord + Copy> PartialOrd for Candidate<V, E> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         // Note the inverted order; we want nodes with lesser weight to have
         // higher priority
-        other.estimated_weight.partial_cmp(&self.estimated_weight)
+        Some(self.cmp(other))
     }
 }
 
@@ -50,9 +50,9 @@ pub fn astar<V: Ord + Copy, E: Ord + Copy + Add<Output = E> + Zero>(
         state: start,
     });
     while let Some(Candidate {
-        estimated_weight: _,
         real_weight,
         state: current,
+        ..
     }) = queue.pop()
     {
         if current == target {
@@ -62,8 +62,7 @@ pub fn astar<V: Ord + Copy, E: Ord + Copy + Add<Output = E> + Zero>(
             let real_weight = real_weight + weight;
             if weights
                 .get(&next)
-                .map(|&weight| real_weight < weight)
-                .unwrap_or(true)
+                .is_none_or(|&weight| real_weight < weight)
             {
                 // current allows us to reach next with lower weight (or at all)
                 // add next to the front
@@ -111,8 +110,8 @@ mod tests {
     }
 
     fn add_edge<V: Ord + Copy, E: Ord>(graph: &mut Graph<V, E>, v1: V, v2: V, c: E) {
-        graph.entry(v1).or_insert_with(BTreeMap::new).insert(v2, c);
-        graph.entry(v2).or_insert_with(BTreeMap::new);
+        graph.entry(v1).or_default().insert(v2, c);
+        graph.entry(v2).or_default();
     }
 
     #[test]
